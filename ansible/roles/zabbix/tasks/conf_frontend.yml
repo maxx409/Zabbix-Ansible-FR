@@ -1,0 +1,104 @@
+---
+    - name: S'assurer que les paquets locales sont installés
+      ansible.builtin.apt:
+        name:
+          - locales
+          - locales-all
+        state: present
+
+    - name: S'assurer que le paquet locale necessaire est bien dans locale.gen
+      ansible.builtin.lineinfile:
+        path: /etc/locale.gen
+        regexp: "^#?fr_FR.UTF-8"
+        line: "fr_FR.UTF-8 UTF-8"
+        state: present
+
+    - name: Application des modifications
+      ansible.builtin.command:
+        cmd: locale-gen
+
+    - name: Paramétrage du locale par defaut
+      ansible.builtin.copy:
+        dest: /etc/default/locale
+        content: |
+          LANG="fr_FR.UTF-8"
+          LANGUAGE="fr_FR.UTF-8"
+          LC_ALL="fr_FR.UTF-8"
+
+    - name: Ajout du francais sur apache
+      ansible.builtin.blockinfile:
+        path: /etc/zabbix/apache.conf
+        block: |
+          <IfModule mod_env.c>
+              SetEnv LANG fr_FR.UTF-8
+              SetEnv LANGUAGE fr_FR.UTF-8
+          </IfModule>
+      notify:
+        - Restart Apache
+
+    - name: choix du timezone sur php
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/apache.conf
+        regexp: '^php_value date.timezone'
+        line: "php_value date.timezone {{ timezone }}"
+        state: present
+      notify:
+        - Restart Apache
+
+    - name: Configuration du frontend zabbix
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_host: "{{ db_host }}"
+        login_port: 3306
+        login_db: "{{ db_name }}"
+        query: "UPDATE profiles SET value_str='{{ theme }}' WHERE idx='web.theme';"
+
+    - name: Choix du nom du serveur zabbix
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_host: "{{ db_host }}"
+        login_port: 3306
+        login_db: "{{ db_name }}"
+        query: "UPDATE interface SET name='{{ zabbix_server_name }}' WHERE interfaceid=1;"
+
+    - name: Choix de la langue en francais pour zabbix
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_host: "{{ db_host }}"
+        login_port: 3306
+        login_db: "{{ db_name }}"
+        query: "UPDATE profiles SET value_str='fr_FR' WHERE idx='web.locale';"
+
+    - name: Choix de la timezone pour zabbix
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        login_host: "{{ db_host }}"
+        login_port: 3306
+        login_db: "{{ db_name }}"
+        query: "UPDATE config SET default_time_zone='{{ timezone }}';"
+
+    - name: Configuration de la base de donnée pour la configuration avec zabbix frontend
+      ansible.builtin.blockinfile:
+        path: /usr/share/zabbix/conf/zabbix.conf.php
+        create: yes
+        block: |
+          <?php
+          $DB['TYPE']     = 'MYSQL';
+          $DB['SERVER']   = '{{ db_host }}';
+          $DB['PORT']     = '0';
+          $DB['DATABASE'] = '{{ db_name }}';
+          $DB['USER']     = '{{ db_user }}';
+          $DB['PASSWORD'] = '{{ db_password }}';
+          $ZBX_SERVER     = '{{ zabbix_server_ip }}';
+          $ZBX_SERVER_PORT = '10051';
+          $ZBX_SERVER_NAME = '{{ zabbix_server_name }}';
+          $IMAGE_FORMAT_DEFAULT = IMAGE_FORMAT_PNG;
+
+    - name: Redémarrage du service apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted

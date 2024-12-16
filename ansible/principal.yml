@@ -1,0 +1,7 @@
+---
+- name: Déployer la base de données et Zabbix
+  hosts: debian
+  become: true
+  roles:
+    - zabbix
+    - modsecurity

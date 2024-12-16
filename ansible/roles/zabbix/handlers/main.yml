@@ -1,0 +1,18 @@
+---
+- name: Restart Zabbix Server
+  ansible.builtin.service:
+    name: zabbix-server
+    state: restarted
+
+- name: Restart Apache
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+
+- name: Restart Apache
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+
+- name: Enable SSL Site
+  ansible.builtin.command: a2ensite zabbix-ssl.conf

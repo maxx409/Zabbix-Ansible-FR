@@ -1,0 +1,82 @@
+---
+    - name: Création d'une backup du fichier zabbix_server.conf
+      ansible.builtin.copy:
+        src: /etc/zabbix/zabbix_server.conf
+        dest: /etc/zabbix/zabbix_server.conf.bak
+        remote_src: yes
+
+    - name: Creation et ou modifications droits du fichier zabbix_server.conf
+      file:
+        path: /etc/zabbix/zabbix_server.conf
+        state: touch
+        owner: zabbix
+        group: zabbix
+        mode: '0644'
+
+    - name: Décommenter et configurer DBName
+      lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^DBName=zabbix$'
+        line: 'DBName=Zabbix_DataBase'
+
+    - name: Décommenter et configurer DBHost
+      lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^#\s*DBHost='
+        line: 'DBHost=localhost'
+        state: present
+
+    - name: Décommenter et configurer DBUser
+      lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^DBUser=zabbix'
+        line: 'DBUser=zabbix_USER'
+        state: present
+
+    - name: Décommenter et configurer DBPassword
+      lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^#\s*DBPassword='
+        line: 'DBPassword=Azertyuiop'
+        state: present
+
+    - name: Décommenter et configurer StartConnector
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^#\s*StartConnectors=0'
+        line: 'StartConnectors=5'
+        state: present
+
+    - name: Décommenter et configurer StartIPMIPollers
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^#\s*StartIPMIPollers=0'
+        line: 'StartIPMIPollers=2'
+        state: present
+
+    - name: Décommenter et configurer StartVMWareCollectors
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^#\s*StartVMwareCollectors=0'
+        line: 'StartVMwareCollectors=2'
+        state: present
+
+    - name: Redémarage du serveur zabbix
+      ansible.builtin.service:
+        name: zabbix-server
+        state: restarted
+
+    - name: Redémarrage du service apache2
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+
+    - name: Démarrer le service zabbix-server
+      systemd:
+        name: zabbix-server.service
+        enabled: yes
+        state: started
+
+    - name: Fin du playbook zabbix_server.conf
+      debug:
+        msg: "Playbook configuration du fichier zabbix_server.conf terminé. Passage à la configuration suivante"

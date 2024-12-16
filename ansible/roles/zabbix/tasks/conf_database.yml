@@ -1,0 +1,76 @@
+---
+    - name: Vérification Mysql est installé et en cous d'éxecution
+      ansible.builtin.service:
+        name: mysql
+        state: started
+        enabled: true
+
+    - name: Change le mecanisme d'authentification
+      ansible.builtin.mysql_user:
+        name: root
+        host: localhost
+        password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        plugin: mysql_native_password
+        state: present
+
+    - name: Creation de la base de donnée zabbix
+      ansible.builtin.mysql_db:
+        name: "{{ zabbix_db_name }}"
+        encoding: utf8
+        collation: utf8_bin
+        state: present
+        login_user: "{{ mysql_root_user }}"
+        login_password: "{{ mysql_root_password }}"
+
+    - name: Création de l'utilisateur de la base de donnée
+      ansible.builtin.mysql_user:
+        name: "{{ zabbix_db_user }}"
+        password: "{{ zabbix_db_password }}"
+        priv: "{{ zabbix_db_name }}.*:ALL"
+        host: localhost
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+
+    - name: Importation du schéma de la base de donnée zabbix vers la base de donnée mysql
+      ansible.builtin.shell: |
+        zcat /usr/share/zabbix-sql-scripts/mysql/server.sql.gz | mysql --default-character-set=utf8mb4 -u{{ zabbix_db_user }} -p{{ zabbix_db_password }} {{ zabbix_db_name }}
+      args:
+        executable: /bin/bash
+      register: import_result
+
+    - name: Ajout d'une nouvelle colonne nommé name a la table interface dans mysql
+      community.mysql.mysql_query:
+        login_user: "{{ mysql_root_user }}"
+        login_password: "{{ mysql_root_password }}"
+        login_db: "{{ zabbix_db_name }}"
+        query: "ALTER TABLE interface ADD COLUMN name VARCHAR(255) NULL;"
+
+    - name: Ajout d'une nouvelle colonne nommé default_time_zone
+      community.mysql.mysql_query:
+        login_user: "{{ mysql_root_user }}"
+        login_password: "{{ mysql_root_password }}"
+        login_db: "{{ zabbix_db_name }}"
+        query: "ALTER TABLE config ADD COLUMN default_time_zone VARCHAR(255) DEFAULT NULL;"
+
+    - name: Hashage du mot de passe admin de zabbix avec BCrypt
+      ansible.builtin.command: |
+        python3 -c "import bcrypt; print(bcrypt.hashpw(b'{{ zabbix_admin_password }}', bcrypt.gensalt()).decode())"
+      register: zabbix_admin_password_hash
+
+    - name: Debug du mot de passe hashé
+      debug:
+        msg: "Hashed password (Bcrypt): {{ zabbix_admin_password_hash.stdout }}"
+
+    - name: Changement du mot de passe de Admin
+      ansible.builtin.mysql_query:
+        login_user: "{{ mysql_root_user }}"
+        login_password: "{{ mysql_root_password }}"
+        login_db: "{{ zabbix_db_name }}"
+        query: |
+          UPDATE users SET passwd='{{ zabbix_admin_password_hash.stdout }}' WHERE username='Admin';
+
+    - name: Fin du playbook base de donnée
+      debug:
+        msg: "Playbook configuration base de donnée terminé. Passage à la configuration supplémentaire."

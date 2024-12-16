@@ -1,0 +1,57 @@
+---
+    - name: Arrêter temporairement packagekitd
+      ansible.builtin.systemd:
+        name: packagekit
+        enabled: no
+        state: stopped
+
+    - name: Téléchargement du paquet Zabbix
+      ansible.builtin.get_url:
+        url: https://repo.zabbix.com/zabbix/7.0/debian/pool/main/z/zabbix-release/zabbix-release_latest+debian12_all.deb
+        dest: /tmp/zabbix-release_latest+debian12_all.deb
+
+    - name: Installation du paquet zabbix
+      ansible.builtin.command:
+        cmd: dpkg -i /tmp/zabbix-release_latest+debian12_all.deb
+      register: dpkg_install
+      ignore_errors: true
+
+    - name: Mise a jour du cache des paquets
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Installations des dépendances nécessaires
+      ansible.builtin.apt:
+        name:
+          - apache2
+          - default-mysql-server
+          - python3-pymysql
+          - python3-bcrypt
+          - default-libmysqlclient-dev
+          - gnupg
+          - lsb-release
+          - locales
+        state: present
+
+    - name: Suppression du paquet zabbix
+      ansible.builtin.file:
+        path: /tmp/zabbix-release_latest+debian12_all.deb
+        state: absent
+
+    - name: Installation du serveur zabbix
+      ansible.builtin.apt:
+        name:
+          - zabbix-server-mysql
+          - zabbix-frontend-php
+          - zabbix-apache-conf
+          - zabbix-sql-scripts
+        state: present
+
+    - name: Installation de Zabbix agent
+      ansible.builtin.apt:
+        name: zabbix-agent
+        state: present
+
+    - name: Fin du playbook principal
+      debug:
+        msg: "Playbook principal terminé. Passage à la configuration supplémentaire."

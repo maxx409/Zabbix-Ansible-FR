@@ -1,0 +1,49 @@
+---
+    - name: Verifie et installe le pare-feu si il n'est pas présent
+      ansible.builtin.package:
+        name: ufw
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Ouverture des ports pour Zabbix et HTTPS
+      ansible.builtin.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - 10050
+        - 10051
+        - 443
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Bloque le port 80 via UFW
+      ansible.builtin.ufw:
+        rule: deny
+        port: 80
+        proto: tcp
+
+    - name: S'assure que le service zabbix-server est actif
+      ansible.builtin.systemd:
+        name: zabbix-server
+        state: started
+        enabled: true
+
+    - name: S'assure que le service zabbix-agent est actif
+      ansible.builtin.systemd:
+        name: zabbix-agent
+        state: started
+        enabled: true
+
+    - name: S'assurer que le service mysql est actif
+      ansible.builtin.systemd:
+        name: mysql
+        state: started
+        enabled: true
+
+    - name: Redemarrage du service Zabbix et Apache
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - zabbix-server
+        - apache2

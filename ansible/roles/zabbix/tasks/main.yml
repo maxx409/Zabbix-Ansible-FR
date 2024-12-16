@@ -1,0 +1,7 @@
+---
+- include_tasks: installations.yml
+- include_tasks: conf_database.yml
+- include_tasks: conf_serverconf.yml
+- include_tasks: conf_frontend.yml
+- include_tasks: conf_ssl.yml
+- include_tasks: conf_parefeu.yml

@@ -1,0 +1,16 @@
+zabbix_db_name: Zabbix_DataBase
+zabbix_db_user: zabbix_USER
+zabbix_db_password: PasswordZabbixDB
+zabbix_admin_password: PasswordZabbixAdmin
+mysql_root_user: root
+mysql_root_password: PasswordRootMySQL
+zabbix_server_name: Zabbix-ESGI
+zabbix_server_ip: 127.0.0.1
+timezone: Europe/Paris
+theme: "blue"
+language: fr_FR.UTF-8
+db_host: localhost
+db_user: zabbix_USER
+db_password: PasswordDB
+db_name: Zabbix_DataBase
+tls_enabled: false

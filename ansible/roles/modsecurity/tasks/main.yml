@@ -1,0 +1,49 @@
+---
+    - name: S'assurer que apache est installé
+      apt:
+        name: apache2
+        state: present
+
+    - name: Installation libapache2-mod-security2
+      apt:
+        name: libapache2-mod-security2
+        state: present
+
+    - name: Activation Apache security2
+      apache2_module:
+        name: security2
+        state: present
+      notify:
+        - Restart Apache
+
+    - name: Modification de modsecurity.conf-recommended
+      copy:
+        remote_src: yes
+        src: /etc/modsecurity/modsecurity.conf-recommended
+        dest: /etc/modsecurity/modsecurity.conf
+
+    - name: Activation SecAuditEngine et configuration des logs
+      blockinfile:
+        path: /etc/modsecurity/modsecurity.conf
+        block: |
+          SecAuditEngine On
+          SecAuditLog /var/log/apache2/modsec_audit.log
+        marker: "# BEGIN MODSEC LOGGING"
+      notify:
+        - Restart Apache
+
+    - name: Activation SecRuleEngine
+      lineinfile:
+        path: /etc/modsecurity/modsecurity.conf
+        insertafter: '^#SecRuleEngine DetectionOnly'
+        line: 'SecRuleEngine On'
+
+    - name: Activation debug ModSecurity
+      blockinfile:
+        path: /etc/modsecurity/modsecurity.conf
+        block: |
+          SecDebugLog /var/log/apache2/modsec_debug.log
+          SecDebugLogLevel 9
+        marker: "# BEGIN MODSEC DEBUG LOGGING"
+      notify:
+        - Restart Apache
